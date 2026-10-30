@@ -32,7 +32,7 @@ export async function chat(messages: Message[]): Promise<{ content: string; cost
     const res = await fetch(`${baseURL}/chat/completions`, {
       method: "POST",
       // Cloudflare in front of some gateways (astorias) rejects default runtime user agents with error 1010.
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "User-Agent": "reddit-clean-feed/0.1" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "User-Agent": "reddit-as-intended/0.1" },
       body: JSON.stringify({ model, messages, temperature: 0, max_tokens: 4000 }),
       signal: AbortSignal.timeout(120_000),
     });

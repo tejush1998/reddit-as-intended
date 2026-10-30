@@ -1,7 +1,7 @@
 services:
   feed:
     build: .
-    container_name: reddit-clean-feed
+    container_name: reddit-as-intended
     restart: unless-stopped
     ports:
       - "127.0.0.1:8787:8787"

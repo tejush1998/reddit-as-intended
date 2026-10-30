@@ -10,7 +10,7 @@ const file = (name: string) => () => new Response(Bun.file(join(ROOT, "public", 
 
 // POSTs must carry this header: a plain cross-site form can't set it, so other pages can't trigger runs.
 function start(req: Request, opts: { fetch: boolean; reset: boolean }) {
-  if (req.headers.get("x-clean-feed") !== "1") return new Response("missing x-clean-feed header", { status: 403 });
+  if (req.headers.get("x-as-intended") !== "1") return new Response("missing x-as-intended header", { status: 403 });
   if (isRunning()) return Response.json({ error: "a run is already in progress" }, { status: 409 });
   runCycle(opts);
   return Response.json({ started: true }, { status: 202 });
@@ -45,5 +45,5 @@ Bun.serve({
   fetch: () => new Response("Not found", { status: 404 }),
 });
 
-console.log(`clean feed on http://${HOST}:${PORT}`);
+console.log(`reddit-as-intended on http://${HOST}:${PORT}`);
 boot();

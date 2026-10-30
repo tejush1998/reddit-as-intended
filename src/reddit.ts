@@ -24,7 +24,7 @@ export type Post = {
 };
 
 // Reddit asks clients for a descriptive UA that names the app and its owner; it is sent in every mode.
-const UA = `script:reddit-clean-feed:0.1 (by /u/${process.env.REDDIT_USERNAME || "unknown"})`;
+const UA = `script:reddit-as-intended:0.1 (by /u/${process.env.REDDIT_USERNAME || "unknown"})`;
 
 // json: the www host serves listings at "<path>.json"; oauth.reddit.com takes the bare path.
 type Session = { base: string; json: boolean; headers: Record<string, string> };

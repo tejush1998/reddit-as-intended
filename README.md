@@ -1,8 +1,8 @@
-# reddit-clean-feed
+# Reddit As Intended
 
-Reddit home feed without the doomscroll. It reads your home timeline, has an LLM check every post, and shows only the calm ones on a local page styled like Reddit's dark theme. Click any post to open it on reddit.com.
+Reddit home feed without the doomscroll. Reddit As Intended reads your home timeline, has an LLM check every post, and shows only the calm ones on a local page styled like Reddit's dark theme. Click any post to open it on reddit.com.
 
-![Clean feed screenshot](docs/screenshot.png)
+![Reddit As Intended screenshot](docs/screenshot.png)
 
 **Hidden:** violence, tragedy and death, people venting or in a tough spot, self-harm, abuse, rage-bait, disturbing content.
 **Kept:** everything else, including upbeat milestones ("1 year sober today") and practical questions.
@@ -19,8 +19,8 @@ Every hidden post is listed under **Filtered out** with the reason.
 1. **Download it**
 
    ```sh
-   git clone https://github.com/tejush1998/reddit-clean-feed.git
-   cd reddit-clean-feed
+   git clone https://github.com/tejush1998/reddit-as-intended.git
+   cd reddit-as-intended
    cp .env.example .env
    ```
 

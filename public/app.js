@@ -292,7 +292,7 @@ async function tick() {
 }
 
 async function trigger(path) {
-  await fetch(path, { method: "POST", headers: { "x-clean-feed": "1" } });
+  await fetch(path, { method: "POST", headers: { "x-as-intended": "1" } });
   tick();
 }
 
