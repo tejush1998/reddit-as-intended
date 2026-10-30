@@ -250,7 +250,7 @@ function renderStatus(s) {
     s.counts.pending > 0 && row("Waiting for filter", s.counts.pending),
     s.counts.failed > 0 && row("Couldn't classify (hidden)", s.counts.failed),
     row("Last refresh", s.lastRunAt ? ago(s.lastRunAt / 1000) : "never"),
-    row("Next refresh", busy ? "running" : until(s.nextRunAt)),
+    row("Next refresh", busy ? "running" : s.nextRunAt ? until(s.nextRunAt) : "manual"),
     s.llm.calls > 0 && row("Model spend since start", `$${s.llm.cost.toFixed(4)}`),
   ].filter(Boolean).flat());
 

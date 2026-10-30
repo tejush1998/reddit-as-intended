@@ -39,7 +39,7 @@ Every hidden post is listed under **Filtered out** with the reason.
    docker compose up -d --build
    ```
 
-5. Open **http://localhost:8787**. The first run takes about a minute, and posts appear as each batch is checked. After that the feed refreshes every 15 minutes.
+5. Open **http://localhost:8787** and click **Refresh**. The first run takes about a minute, and posts appear as each batch is checked. Automatic refreshing is off by default; set `feed.autoRefresh` to `true` in `config.json` to refresh every `feed.refreshMinutes`.
 
 To stop it: `docker compose down`. After editing `.env`: `docker compose up -d --force-recreate`.
 
@@ -47,7 +47,7 @@ To stop it: `docker compose down`. After editing `.env`: `docker compose up -d -
 
 - **What gets hidden:** edit [`prompts/filter.md`](prompts/filter.md), then click **Re-run filter** on the page.
 - **Another model:** set `LLM_BASE_URL` and `LLM_MODEL` in `.env`. Any OpenAI-compatible `/chat/completions` API works (OpenAI, OpenRouter, Groq, …).
-- **Refresh interval, posts per refresh, batch size:** [`config.json`](config.json), then `docker compose restart`.
+- **Automatic refresh, refresh interval, posts per refresh, batch size:** [`config.json`](config.json) (`feed.autoRefresh` is off by default), then `docker compose restart`.
 
 ## Troubleshooting
 
@@ -67,11 +67,11 @@ To stop it: `docker compose down`. After editing `.env`: `docker compose up -d -
 Needs [Bun](https://bun.sh) 1.3+. No dependencies.
 
 ```sh
-# 24 labelled sample posts instead of your real feed
+# 24 labelled sample posts instead of your real feed (then click Refresh)
 REDDIT_FIXTURE=test/fixture-listing.json LLM_API_KEY=... bun src/main.ts
 ```
 
-`src/reddit.ts` reads the feed, `src/filter.ts` sends posts to the LLM in batches, `src/agent.ts` runs the refresh loop, `src/db.ts` is the SQLite store, `src/main.ts` serves the page and API, and `public/` is the UI.
+`src/reddit.ts` reads the feed, `src/filter.ts` sends posts to the LLM in batches, `src/agent.ts` runs cycles triggered from the UI, `src/db.ts` is the SQLite store, `src/main.ts` serves the page and API, and `public/` is the UI.
 
 ## License
 

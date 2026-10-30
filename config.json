@@ -8,6 +8,7 @@
   "feed": {
     "sort": "best",
     "pages": 2,
+    "autoRefresh": false,
     "refreshMinutes": 15,
     "keepDays": 7
   },

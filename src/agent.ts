@@ -60,6 +60,10 @@ export async function runCycle({ fetch = true, reset = false } = {}) {
 
 function schedule() {
   clearTimeout(timer);
+  if (!config.feed.autoRefresh) {
+    status.nextRunAt = 0;
+    return;
+  }
   status.nextRunAt = Math.max(status.lastRunAt + refreshMs(), Date.now());
   timer = setTimeout(() => runCycle(), status.nextRunAt - Date.now());
 }
@@ -68,5 +72,5 @@ function schedule() {
 export function boot() {
   status.lastRunAt = lastFetch();
   status.user = getMeta("user");
-  runCycle({ fetch: Date.now() - status.lastRunAt >= refreshMs() });
+  if (config.feed.autoRefresh) runCycle({ fetch: Date.now() - status.lastRunAt >= refreshMs() });
 }

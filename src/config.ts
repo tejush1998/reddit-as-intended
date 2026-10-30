@@ -8,7 +8,7 @@ export const PORT = Number(process.env.PORT ?? 8787);
 
 export type Config = {
   llm: { provider: string; baseURL: string; model: string; authFile: string };
-  feed: { sort: string; pages: number; refreshMinutes: number; keepDays: number };
+  feed: { sort: string; pages: number; autoRefresh: boolean; refreshMinutes: number; keepDays: number };
   filter: { chunkSize: number; concurrency: number; maxAttempts: number; promptFile: string };
 };
 
