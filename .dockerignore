@@ -1,0 +1,5 @@
+.env
+data/
+compose.override.yaml
+.git
+docs/

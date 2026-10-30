@@ -1,0 +1,20 @@
+{
+  "llm": {
+    "provider": "openrouter",
+    "baseURL": "https://openrouter.ai/api/v1",
+    "model": "z-ai/glm-5.3-flash",
+    "authFile": "/run/secrets/opencode-auth.json"
+  },
+  "feed": {
+    "sort": "best",
+    "pages": 2,
+    "refreshMinutes": 15,
+    "keepDays": 7
+  },
+  "filter": {
+    "chunkSize": 15,
+    "concurrency": 3,
+    "maxAttempts": 3,
+    "promptFile": "prompts/filter.md"
+  }
+}

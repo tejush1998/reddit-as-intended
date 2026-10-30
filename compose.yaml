@@ -1,0 +1,15 @@
+services:
+  feed:
+    build: .
+    container_name: reddit-clean-feed
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/data
+      # Edit these on the host; prompt changes apply on the next run, config.json after a restart.
+      - ./config.json:/app/config.json:ro
+      - ./prompts:/app/prompts:ro
