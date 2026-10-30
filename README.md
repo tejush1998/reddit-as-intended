@@ -1,6 +1,6 @@
 # reddit-clean-feed
 
-Your Reddit home feed without the doomscroll. It reads your home timeline, has an LLM check every post, and shows only the calm ones on a local page styled like Reddit's dark theme. Click any post to open it on reddit.com.
+Reddit home feed without the doomscroll. It reads your home timeline, has an LLM check every post, and shows only the calm ones on a local page styled like Reddit's dark theme. Click any post to open it on reddit.com.
 
 ![Clean feed screenshot](docs/screenshot.png)
 
@@ -24,7 +24,7 @@ Every hidden post is listed under **Filtered out** with the reason.
    cp .env.example .env
    ```
 
-2. **Copy your Reddit cookie.** Log in at reddit.com, open DevTools (F12) → **Application** (**Storage** in Firefox) → **Cookies** → `https://www.reddit.com`, and copy the value of `reddit_session`.
+2. **Copy your Reddit cookie.** Log in at reddit.com, open DevTools (F12) → **Application** (**Storage** in Firefox) → **Cookies** → `https://www.reddit.com`, and copy the value of `reddit_session`. (Stays valid for 6 months)
 
 3. **Fill in `.env`**
 
