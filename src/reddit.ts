@@ -33,7 +33,7 @@ const UA = () => `script:reddit-as-intended:0.1 (by /u/${process.env.REDDIT_USER
 type Session = { base: string; json: boolean; headers: Record<string, string> };
 type Me = { name: string; inbox_count?: number };
 
-export type Inbox = { total: number; messages: number; notifications: number };
+export type Inbox = { total: number; messages: number; notifications: number; seen: number };
 
 export const redditConfigured = () =>
   Boolean(process.env.REDDIT_FIXTURE || process.env.REDDIT_COOKIE || process.env.REDDIT_CLIENT_ID);
@@ -88,15 +88,23 @@ export async function fetchHome(pages: number, sort: string, known: Inbox, signa
   return { user: me.name, posts, inbox: await readInbox(s, me.inbox_count ?? 0, known, signal) };
 }
 
+// The badges alone, without the feed.
+export async function fetchInbox(known: Inbox, signal?: AbortSignal): Promise<Inbox> {
+  if (process.env.REDDIT_FIXTURE) return known;
+  const { s, me } = await openSession(signal);
+  return readInbox(s, me.inbox_count ?? 0, known, signal);
+}
+
 // /api/me already carries the unread total, so the split costs a request only when the total changes.
 // Best-effort: a failure leaves the badges as they were. Chat is not exposed through the session cookie.
 async function readInbox(s: Session, total: number, known: Inbox, signal?: AbortSignal): Promise<Inbox> {
   if (total === known.total) return known;
-  if (!total) return { total: 0, messages: 0, notifications: 0 };
+  if (!total) return { total: 0, messages: 0, notifications: 0, seen: 0 };
   const list = await getJSON(s, `/message/unread${s.json ? ".json" : ""}?limit=100&mark=false&raw_json=1`, signal).catch(() => null);
   if (!list) return known;
   const messages = (list.data?.children ?? []).filter((c: any) => c.kind === "t4").length;
-  return { total, messages, notifications: total - messages };
+  const notifications = total - messages;
+  return { total, messages, notifications, seen: Math.min(known.seen, notifications) };
 }
 
 async function openSession(signal?: AbortSignal): Promise<{ s: Session; me: Me }> {

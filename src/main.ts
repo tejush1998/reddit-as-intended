@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { boot, isRunning, refreshAt, runCycle, status, stopCycle } from "./agent";
+import { boot, isRunning, markNotificationsSeen, refreshAt, refreshInbox, runCycle, status, stopCycle } from "./agent";
 import { HOST, PORT, ROOT, config } from "./config";
 import { counts, feed, hiddenByCategory } from "./db";
 import { llmSettings } from "./llm";
@@ -43,6 +43,20 @@ Bun.serve({
     },
     "/api/refresh": { POST: (req) => start(req, { fetch: true, reset: false }) },
     "/api/reclassify": { POST: (req) => start(req, { fetch: false, reset: true }) },
+    "/api/inbox": {
+      POST: async (req) => {
+        if (req.headers.get("x-as-intended") !== "1") return new Response("missing x-as-intended header", { status: 403 });
+        await refreshInbox();
+        return Response.json({ ok: true });
+      },
+    },
+    "/api/inbox/seen": {
+      POST: (req) => {
+        if (req.headers.get("x-as-intended") !== "1") return new Response("missing x-as-intended header", { status: 403 });
+        markNotificationsSeen();
+        return Response.json({ ok: true });
+      },
+    },
     "/api/stop": {
       POST: (req) => {
         if (req.headers.get("x-as-intended") !== "1") return new Response("missing x-as-intended header", { status: 403 });
