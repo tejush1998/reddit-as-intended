@@ -57,7 +57,11 @@ To stop it: press Ctrl+C (Docker: `docker compose down`). After editing `.env`, 
 - **Rate limits:** Refresh is unavailable for `feed.minRefreshSeconds` after each fetch. If Reddit answers 429 (or a 403 block page), all Reddit requests stop for 5 minutes, doubling up to an hour on repeats and surviving restarts. **Re-run filter** still works, because it doesn't touch Reddit.
 - **Stopping a run:** click **Stop** while a refresh is running. Posts already classified stay classified; the in-flight batch is retried next run.
 - **Retries:** while a run is going, the status next to **Refresh** shows any retry and its countdown, and the right sidebar keeps the count and the last retry for that run. Windows narrower than 960px hide both.
-- **Header buttons:** **Messages** opens Reddit chat, **Notifications** opens your Reddit notifications, and the avatar opens your profile. Badges count unread private messages and everything else in your inbox (comment replies, mentions); they refresh only with a **Refresh** run. Reddit chat has no cookie-accessible count.
+- **Header buttons:** **Messages** opens Reddit chat, **Notifications** opens your Reddit notifications, and the avatar opens your profile. The Messages badge counts unread private messages. The Notifications badge counts comment replies and mentions that arrived since you last clicked it, because a session cookie can't see what Reddit's bell shows. Both update when you load the page, at most once per `feed.minRefreshSeconds`, and on every **Refresh** run. Reddit chat has no cookie-accessible count.
+
+## Run in the background
+
+With Bun on macOS, `bin/reddit on` starts the server if it's off and opens the page, `bin/reddit off` stops it, and `bin/reddit status` checks it. If you use the login agent below, it restarts the server after `off`, so turn the agent off instead.
 
 ## Start at login
 
@@ -95,7 +99,7 @@ To restart it: `launchctl kickstart -k gui/$(id -u)/com.reddit-as-intended`. To 
 - Post titles and text are sent to the LLM provider you configure.
 - A post only appears after the model approves it. If the model fails, the post stays hidden.
 - The feed only shows the latest fetch run. Older posts stay in SQLite (until `feed.keepDays`) but are not displayed or re-classified.
-- This uses your own login to read your own feed, 2 requests whenever you refresh, plus 1 when your unread count changes (or every 15 minutes if auto-refresh is enabled). It isn't affiliated with Reddit. If Reddit has approved an API app for you, you can use that instead: see the `REDDIT_CLIENT_*` lines in `.env.example`.
+- This uses your own login to read your own feed, 2 requests whenever you refresh and 1 when you load the page, plus 1 when your unread count changes (or every 15 minutes if auto-refresh is enabled). It isn't affiliated with Reddit. If Reddit has approved an API app for you, you can use that instead: see the `REDDIT_CLIENT_*` lines in `.env.example`.
 
 ## Development
 

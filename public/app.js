@@ -249,7 +249,7 @@ function renderStatus(s) {
 
   for (const [sel, n] of [
     ["#n-messages", s.inbox?.messages ?? 0],
-    ["#n-notifications", s.inbox?.notifications ?? 0],
+    ["#n-notifications", (s.inbox?.notifications ?? 0) - (s.inbox?.seen ?? 0)],
   ]) {
     const el = $(sel);
     el.hidden = n <= 0;
@@ -316,6 +316,7 @@ async function trigger(path) {
 $("#refresh").addEventListener("click", () => trigger("/api/refresh"));
 $("#stop").addEventListener("click", () => trigger("/api/stop"));
 $("#reclassify").addEventListener("click", () => trigger("/api/reclassify"));
+$("#notifications").addEventListener("click", () => trigger("/api/inbox/seen"));
 $("#q").addEventListener("input", (e) => {
   state.q = e.target.value;
   render();
@@ -335,3 +336,4 @@ addEventListener("hashchange", () => {
 });
 
 tick();
+trigger("/api/inbox");
