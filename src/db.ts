@@ -39,16 +39,21 @@ const upsertQ = db.prepare(`
 
 export const upsertPosts = db.transaction((posts: Post[], run: number) => {
   posts.forEach((p, i) => upsertQ.run(p.id, JSON.stringify(p), run, i));
+  setMeta("lastFetchRun", String(run));
 });
 
-// Unjudged posts, current feed order first. A row with keep NULL is a failed attempt.
+// The latest fetch run. Everything the UI shows is scoped to it.
+const maxSeen = () => (db.query("SELECT COALESCE(MAX(last_seen), 0) AS t FROM posts").get() as { t: number }).t;
+export const currentRun = () => Number(getMeta("lastFetchRun")) || maxSeen();
+
+// Unjudged posts from the current run, feed order first. A row with keep NULL is a failed attempt.
 const pendingQ = db.prepare(`
   SELECT p.data FROM posts p LEFT JOIN verdicts v ON v.id = p.id
-  WHERE v.keep IS NULL AND COALESCE(v.attempts, 0) < ?1
-  ORDER BY p.last_seen DESC, p.rank`);
+  WHERE v.keep IS NULL AND COALESCE(v.attempts, 0) < ?1 AND p.last_seen = ?2
+  ORDER BY p.rank`);
 
 export const pending = (maxAttempts: number): Post[] =>
-  pendingQ.all(maxAttempts).map((r: any) => JSON.parse(r.data));
+  pendingQ.all(maxAttempts, currentRun()).map((r: any) => JSON.parse(r.data));
 
 const verdictQ = db.prepare(`
   INSERT INTO verdicts (id, keep, category, reason, model, attempts, decided_at) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6)
@@ -67,10 +72,10 @@ export function failAttempt(id: string) {
 
 const feedQ = db.prepare(`
   SELECT p.data, v.category, v.reason FROM posts p JOIN verdicts v ON v.id = p.id
-  WHERE v.keep = ?1 ORDER BY p.last_seen DESC, p.rank LIMIT 500`);
+  WHERE v.keep = ?1 AND p.last_seen = ?2 ORDER BY p.rank LIMIT 500`);
 
 export const feed = (keep: boolean) =>
-  feedQ.all(keep ? 1 : 0).map((r: any) => ({ ...JSON.parse(r.data), category: r.category, reason: r.reason }));
+  feedQ.all(keep ? 1 : 0, currentRun()).map((r: any) => ({ ...JSON.parse(r.data), category: r.category, reason: r.reason }));
 
 const countsQ = db.prepare(`
   SELECT COUNT(*) AS total,
@@ -78,17 +83,18 @@ const countsQ = db.prepare(`
     COALESCE(SUM(v.keep = 0), 0) AS hidden,
     COALESCE(SUM(v.keep IS NULL AND COALESCE(v.attempts, 0) < ?1), 0) AS pending,
     COALESCE(SUM(v.keep IS NULL AND v.attempts >= ?1), 0) AS failed
-  FROM posts p LEFT JOIN verdicts v ON v.id = p.id`);
+  FROM posts p LEFT JOIN verdicts v ON v.id = p.id
+  WHERE p.last_seen = ?2`);
 
-export const counts = (maxAttempts: number) => countsQ.get(maxAttempts) as Record<string, number>;
+export const counts = (maxAttempts: number) => countsQ.get(maxAttempts, currentRun()) as Record<string, number>;
 
 const byCategoryQ = db.prepare(`
   SELECT v.category, COUNT(*) AS n FROM verdicts v JOIN posts p ON p.id = v.id
-  WHERE v.keep = 0 GROUP BY v.category ORDER BY n DESC`);
+  WHERE v.keep = 0 AND p.last_seen = ?1 GROUP BY v.category ORDER BY n DESC`);
 
-export const hiddenByCategory = () => byCategoryQ.all() as { category: string; n: number }[];
+export const hiddenByCategory = () => byCategoryQ.all(currentRun()) as { category: string; n: number }[];
 
-export const lastFetch = () => (db.query("SELECT COALESCE(MAX(last_seen), 0) AS t FROM posts").get() as { t: number }).t;
+export const lastFetch = () => Number(getMeta("lastFetchRun")) || maxSeen();
 
 export function prune(keepDays: number) {
   db.run("DELETE FROM posts WHERE last_seen < ?", [Date.now() - keepDays * 86_400_000]);

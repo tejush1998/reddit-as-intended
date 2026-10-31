@@ -4,11 +4,12 @@ import { ROOT, config } from "./config";
 import { failAttempt, pending, saveVerdict } from "./db";
 import { chat, llmSettings } from "./llm";
 import type { Post } from "./reddit";
+import { noteRetry } from "./retries";
 
 const CATEGORIES = new Set(["violence", "tragedy", "distress", "self_harm", "abuse", "outrage", "disturbing"]);
 
 export type Progress = {
-  progress: { done: number; total: number };
+  progress: { done: number; total: number; pass: number };
   llm: { calls: number; cost: number };
   error: string;
   version: number;
@@ -16,18 +17,22 @@ export type Progress = {
 
 // Sends unjudged posts to the model in chunks until every post has a verdict
 // or has used up its attempts. Posts without a verdict stay out of the feed.
-export async function classifyPending(s: Progress) {
+export async function classifyPending(s: Progress, signal?: AbortSignal) {
   const { chunkSize, concurrency, maxAttempts, promptFile } = config.filter;
   const prompt = readFileSync(join(ROOT, promptFile), "utf8"); // re-read so prompt edits apply on the next run
-  for (let todo = pending(maxAttempts); todo.length; todo = pending(maxAttempts)) {
-    s.progress = { done: 0, total: todo.length };
+  for (let todo = pending(maxAttempts), pass = 1; todo.length && !signal?.aborted; todo = pending(maxAttempts), pass++) {
+    if (pass > 1) {
+      noteRetry(`Retrying ${todo.length} posts`);
+      if (s.error.startsWith("Filter model")) s.error = ""; // comes back if this pass fails too
+    }
+    s.progress = { done: 0, total: todo.length, pass };
     const chunks: Post[][] = [];
     for (let i = 0; i < todo.length; i += chunkSize) chunks.push(todo.slice(i, i + chunkSize));
     let next = 0;
     const worker = async () => {
-      while (next < chunks.length) {
+      while (next < chunks.length && !signal?.aborted) {
         const chunk = chunks[next++];
-        await classifyChunk(chunk, prompt, s);
+        await classifyChunk(chunk, prompt, s, signal);
         s.progress.done += chunk.length;
         s.version++;
       }
@@ -36,7 +41,7 @@ export async function classifyPending(s: Progress) {
   }
 }
 
-async function classifyChunk(posts: Post[], prompt: string, s: Progress) {
+async function classifyChunk(posts: Post[], prompt: string, s: Progress, signal?: AbortSignal) {
   // Short ids keep the model from mangling Reddit fullnames.
   const input = posts.map((p, i) => ({
     id: `p${i + 1}`,
@@ -53,13 +58,15 @@ async function classifyChunk(posts: Post[], prompt: string, s: Progress) {
     const { content, cost } = await chat([
       { role: "system", content: prompt },
       { role: "user", content: JSON.stringify(input) },
-    ]);
+    ], signal);
     s.llm.calls++;
     s.llm.cost += cost;
     decisions = parseDecisions(content);
   } catch (e) {
-    s.error = `Filter model: ${(e as Error).message}`;
-    console.error(s.error);
+    if (signal?.aborted) throw e;
+    const message = `Filter model: ${(e as Error).message}`;
+    s.error ||= message; // a fetch error from earlier in the run matters more
+    console.error(message);
     posts.forEach((p) => failAttempt(p.id));
     return;
   }

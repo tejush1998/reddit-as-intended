@@ -10,9 +10,9 @@ Every hidden post is listed under **Filtered out** with the reason.
 
 ## You need
 
-- [Docker](https://docs.docker.com/get-docker/) (or [OrbStack](https://orbstack.dev) on a Mac)
+- [Bun](https://bun.sh) 1.3+, or [Docker](https://docs.docker.com/get-docker/) ([OrbStack](https://orbstack.dev) works too) if you'd rather not install Bun
 - A Reddit account
-- An API key for an LLM. The default is [OpenRouter](https://openrouter.ai/keys) with `z-ai/glm-5.3-flash`. Filtering 200 posts costs about half a cent.
+- An API key for an LLM. The default is [OpenRouter](https://openrouter.ai/keys) with `z-ai/glm-5.3-flash`. Filtering 100 posts costs about a quarter of a cent.
 
 ## Set up
 
@@ -33,34 +33,69 @@ Every hidden post is listed under **Filtered out** with the reason.
    LLM_API_KEY=paste-your-openrouter-key
    ```
 
-4. **Start it**
+4. **Start it** with either one. They share the same port and `data/` folder, so run only one at a time.
 
    ```sh
+   # With Bun
+   bun src/main.ts
+   ```
+
+   ```sh
+   # With Docker
    docker compose up -d --build
    ```
 
 5. Open **http://localhost:8787** and click **Refresh**. The first run takes about a minute, and posts appear as each batch is checked. Automatic refreshing is off by default; set `feed.autoRefresh` to `true` in `config.json` to refresh every `feed.refreshMinutes`.
 
-To stop it: `docker compose down`. After editing `.env`: `docker compose up -d --force-recreate`.
+To stop it: press Ctrl+C (Docker: `docker compose down`). After editing `.env`, restart it (Docker: `docker compose up -d --force-recreate`).
 
 ## Customise
 
 - **What gets hidden:** edit [`prompts/filter.md`](prompts/filter.md), then click **Re-run filter** on the page.
 - **Another model:** set `LLM_BASE_URL` and `LLM_MODEL` in `.env`. Any OpenAI-compatible `/chat/completions` API works (OpenAI, OpenRouter, Groq, …).
-- **Automatic refresh, refresh interval, posts per refresh, batch size:** [`config.json`](config.json) (`feed.autoRefresh` is off by default), then `docker compose restart`.
+- **Automatic refresh, refresh interval, posts per refresh, batch size:** [`config.json`](config.json) (`feed.autoRefresh` is off by default), then restart the server (Docker: `docker compose restart`).
+- **Rate limits:** Refresh is unavailable for `feed.minRefreshSeconds` after each fetch. If Reddit answers 429 (or a 403 block page), all Reddit requests stop for 5 minutes, doubling up to an hour on repeats and surviving restarts. **Re-run filter** still works, because it doesn't touch Reddit.
+- **Stopping a run:** click **Stop** while a refresh is running. Posts already classified stay classified; the in-flight batch is retried next run.
+- **Retries:** while a run is going, the status next to **Refresh** shows any retry and its countdown, and the right sidebar keeps the count and the last retry for that run. Windows narrower than 960px hide both.
+- **Header buttons:** **Messages** opens Reddit chat, **Notifications** opens your Reddit notifications, and the avatar opens your profile. Badges count unread private messages and everything else in your inbox (comment replies, mentions); they refresh only with a **Refresh** run. Reddit chat has no cookie-accessible count.
+
+## Start at login
+
+Docker restarts the server for you as long as Docker is running. With Bun on macOS, this launchd agent starts it at login and restarts it if it crashes. Run it from the project folder:
+
+```sh
+cat > ~/Library/LaunchAgents/com.reddit-as-intended.plist <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.reddit-as-intended</string>
+  <key>ProgramArguments</key><array><string>$(which bun)</string><string>src/main.ts</string></array>
+  <key>WorkingDirectory</key><string>$PWD</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$PWD/data/server.log</string>
+  <key>StandardErrorPath</key><string>$PWD/data/server.log</string>
+</dict>
+</plist>
+EOF
+launchctl load ~/Library/LaunchAgents/com.reddit-as-intended.plist
+```
+
+To restart it: `launchctl kickstart -k gui/$(id -u)/com.reddit-as-intended`. To turn it off: `launchctl unload ~/Library/LaunchAgents/com.reddit-as-intended.plist`.
 
 ## Troubleshooting
 
 - **Red banner saying "logged out" or "instead of JSON":** the cookie expired or was revoked (logging out of Reddit revokes it). Copy a fresh `reddit_session` into `.env` and restart.
 - **Red banner starting with "Filter model":** check `LLM_API_KEY`, `LLM_BASE_URL` and `LLM_MODEL`.
-- **Logs:** `docker compose logs -f`
+- **Logs:** the terminal running the server, or `data/server.log` if it starts at login. With Docker: `docker compose logs -f`.
 
 ## Good to know
 
 - The page is only reachable from your own computer (`127.0.0.1`). Your cookie is only sent to reddit.com.
 - Post titles and text are sent to the LLM provider you configure.
 - A post only appears after the model approves it. If the model fails, the post stays hidden.
-- This uses your own login to read your own feed, a few requests every 15 minutes. It isn't affiliated with Reddit. If Reddit has approved an API app for you, you can use that instead: see the `REDDIT_CLIENT_*` lines in `.env.example`.
+- The feed only shows the latest fetch run. Older posts stay in SQLite (until `feed.keepDays`) but are not displayed or re-classified.
+- This uses your own login to read your own feed, 2 requests whenever you refresh, plus 1 when your unread count changes (or every 15 minutes if auto-refresh is enabled). It isn't affiliated with Reddit. If Reddit has approved an API app for you, you can use that instead: see the `REDDIT_CLIENT_*` lines in `.env.example`.
 
 ## Development
 

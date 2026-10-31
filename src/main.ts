@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { boot, isRunning, runCycle, status } from "./agent";
+import { boot, isRunning, refreshAt, runCycle, status, stopCycle } from "./agent";
 import { HOST, PORT, ROOT, config } from "./config";
 import { counts, feed, hiddenByCategory } from "./db";
 import { llmSettings } from "./llm";
@@ -12,6 +12,7 @@ const file = (name: string) => () => new Response(Bun.file(join(ROOT, "public", 
 function start(req: Request, opts: { fetch: boolean; reset: boolean }) {
   if (req.headers.get("x-as-intended") !== "1") return new Response("missing x-as-intended header", { status: 403 });
   if (isRunning()) return Response.json({ error: "a run is already in progress" }, { status: 409 });
+  if (opts.fetch && Date.now() < refreshAt()) return Response.json({ error: "too soon to refresh" }, { status: 429 });
   runCycle(opts);
   return Response.json({ started: true }, { status: 202 });
 }
@@ -33,6 +34,7 @@ Bun.serve({
         hiddenByCategory: hiddenByCategory(),
         model: `${new URL(baseURL).host} · ${model}`,
         refreshMinutes: config.feed.refreshMinutes,
+        refreshAt: refreshAt(),
       });
     },
     "/api/feed": (req) => {
@@ -41,6 +43,14 @@ Bun.serve({
     },
     "/api/refresh": { POST: (req) => start(req, { fetch: true, reset: false }) },
     "/api/reclassify": { POST: (req) => start(req, { fetch: false, reset: true }) },
+    "/api/stop": {
+      POST: (req) => {
+        if (req.headers.get("x-as-intended") !== "1") return new Response("missing x-as-intended header", { status: 403 });
+        if (!isRunning()) return Response.json({ error: "no run in progress" }, { status: 409 });
+        stopCycle();
+        return Response.json({ stopping: true }, { status: 202 });
+      },
+    },
   },
   fetch: () => new Response("Not found", { status: 404 }),
 });

@@ -69,7 +69,7 @@ function ago(sec) {
 }
 
 function until(ms) {
-  const m = Math.round((ms - Date.now()) / 60000);
+  const m = Math.ceil((ms - Date.now()) / 60000);
   return m <= 0 ? "now" : `in ${m} min`;
 }
 
@@ -181,7 +181,7 @@ function setupCard() {
       h("li", {}, "Open reddit.com in your browser while logged in."),
       h("li", {}, "DevTools → Application (Storage in Firefox) → Cookies → https://www.reddit.com"),
       h("li", {}, "Copy the value of ", h("code", {}, "reddit_session"), " into ", h("code", {}, ".env"), " as ", h("code", {}, "REDDIT_COOKIE=…")),
-      h("li", {}, "Restart: ", h("code", {}, "docker compose up -d --force-recreate")),
+      h("li", {}, "Restart the server: ", h("code", {}, "bun src/main.ts"), " or ", h("code", {}, "docker compose up -d --force-recreate")),
     ),
   );
 }
@@ -226,21 +226,35 @@ function renderStatus(s) {
 
   const activity = $("#activity");
   activity.hidden = !busy;
-  activity.textContent = s.phase === "fetching" ? "Fetching feed…" : `Filtering ${s.progress.done}/${s.progress.total}`;
+  const label = s.phase === "fetching" ? "Fetching feed…"
+    : `Filtering ${s.progress.done}/${s.progress.total}${s.progress.pass > 1 ? ` (pass ${s.progress.pass})` : ""}`;
+  const retryIn = Math.ceil((s.retries.until - Date.now()) / 1000);
+  activity.textContent = retryIn > 0 ? `${label} · ${s.retries.note} in ${retryIn}s` : label;
   const bar = $("#progress");
   bar.style.width = s.phase === "filtering" && s.progress.total ? `${(100 * s.progress.done) / s.progress.total}%` : s.phase === "fetching" ? "12%" : "0";
   bar.style.opacity = busy ? "1" : "0";
 
   const refresh = $("#refresh");
-  refresh.disabled = busy;
+  const wait = s.refreshAt > Date.now();
+  refresh.disabled = busy || wait;
+  refresh.title = wait ? `Refresh is available ${until(s.refreshAt)}` : "Fetch new posts from Reddit";
   refresh.classList.toggle("spinning", busy);
+  refresh.hidden = busy;
+  $("#stop").hidden = !busy;
   $("#reclassify").disabled = busy;
 
-  $("#me").replaceChildren(
-    h("span", { class: "avatar" }, icon("user", 18)),
-    h("span", {}, s.user ? `u/${s.user}` : s.configured ? "connecting…" : "not connected"),
-    s.user && h("span", { class: "dot-online", title: "Logged in" }),
-  );
+  $("#profile").href = s.user ? `https://www.reddit.com/user/${encodeURIComponent(s.user)}/` : "https://www.reddit.com/";
+  $("#profile-name").textContent = s.user ? `u/${s.user}` : s.configured ? "connecting…" : "not connected";
+  $("#profile").title = s.user ? `u/${s.user} on Reddit` : "Reddit profile";
+
+  for (const [sel, n] of [
+    ["#n-messages", s.inbox?.messages ?? 0],
+    ["#n-notifications", s.inbox?.notifications ?? 0],
+  ]) {
+    const el = $(sel);
+    el.hidden = n <= 0;
+    el.textContent = n > 99 ? "99+" : String(n);
+  }
 
   $("#model").textContent = s.model;
   const row = (label, value) => [h("dt", {}, label), h("dd", {}, value)];
@@ -249,8 +263,11 @@ function renderStatus(s) {
     row("Filtered out", s.counts.hidden),
     s.counts.pending > 0 && row("Waiting for filter", s.counts.pending),
     s.counts.failed > 0 && row("Couldn't classify (hidden)", s.counts.failed),
+    s.retries.count > 0 && row("Retries this run", s.retries.count),
+    s.retries.note && row("Last retry", s.retries.note),
     row("Last refresh", s.lastRunAt ? ago(s.lastRunAt / 1000) : "never"),
     row("Next refresh", busy ? "running" : s.nextRunAt ? until(s.nextRunAt) : "manual"),
+    wait && row("Refresh available", until(s.refreshAt)),
     s.llm.calls > 0 && row("Model spend since start", `$${s.llm.cost.toFixed(4)}`),
   ].filter(Boolean).flat());
 
@@ -297,6 +314,7 @@ async function trigger(path) {
 }
 
 $("#refresh").addEventListener("click", () => trigger("/api/refresh"));
+$("#stop").addEventListener("click", () => trigger("/api/stop"));
 $("#reclassify").addEventListener("click", () => trigger("/api/reclassify"));
 $("#q").addEventListener("input", (e) => {
   state.q = e.target.value;

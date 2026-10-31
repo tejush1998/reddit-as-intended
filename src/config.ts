@@ -7,8 +7,8 @@ export const HOST = process.env.HOST ?? "127.0.0.1";
 export const PORT = Number(process.env.PORT ?? 8787);
 
 export type Config = {
-  llm: { provider: string; baseURL: string; model: string; authFile: string };
-  feed: { sort: string; pages: number; autoRefresh: boolean; refreshMinutes: number; keepDays: number };
+  llm: { provider: string; baseURL: string; model: string };
+  feed: { sort: string; pages: number; autoRefresh: boolean; refreshMinutes: number; minRefreshSeconds: number; keepDays: number };
   filter: { chunkSize: number; concurrency: number; maxAttempts: number; promptFile: string };
 };
 
