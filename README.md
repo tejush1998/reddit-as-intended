@@ -59,10 +59,6 @@ To stop it: press Ctrl+C (Docker: `docker compose down`). After editing `.env`, 
 - **Retries:** while a run is going, the status next to **Refresh** shows any retry and its countdown, and the right sidebar keeps the count and the last retry for that run. Windows narrower than 960px hide both.
 - **Header buttons:** **Messages** opens Reddit chat, **Notifications** opens your Reddit notifications, and the avatar opens your profile. The Messages badge counts unread private messages. The Notifications badge counts comment replies and mentions that arrived since you last clicked it, because a session cookie can't see what Reddit's bell shows. Both update when you load the page, at most once per `feed.minRefreshSeconds`, and on every **Refresh** run. Reddit chat has no cookie-accessible count.
 
-## Run in the background
-
-With Bun on macOS, `bin/reddit on` starts the server if it's off and opens the page, `bin/reddit off` stops it, and `bin/reddit status` checks it. If you use the login agent below, it restarts the server after `off`, so turn the agent off instead.
-
 ## Start at login
 
 Docker restarts the server for you as long as Docker is running. With Bun on macOS, this launchd agent starts it at login and restarts it if it crashes. Run it from the project folder:
